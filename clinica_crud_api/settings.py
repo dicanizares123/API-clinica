@@ -25,8 +25,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config('SECRET_KEY')
 
+
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config('DEBUG', default=False, cast=bool)
+DEBUG = True
 
 ALLOWED_HOSTS = []
 
@@ -147,17 +148,12 @@ REST_FRAMEWORK = {
 } 
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
-    'ROTATE_REFRESH_TOKENS': True,
-    'BLACKLIST_AFTER_ROTATION': True,
     'AUTH_HEADER_TYPES': ('Bearer',),
 } 
 
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 DJOSER = {
-    'LOGIN_FIELD': 'email',
     'PASSWORD_RESET_CONFIRM_URL': 'auth/password/reset-password-confirmation/?uid={uid}&token={token}',
     'ACTIVATION_URL': '#/activate/{uid}/{token}', 
     'SEND_ACTIVATION_EMAIL': False,
