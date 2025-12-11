@@ -1,0 +1,1 @@
+# Core app - Modelos base y utilidades compartidas

@@ -41,10 +41,20 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    
+    # Third party apps
     'corsheaders',
     'rest_framework',
     'djoser',
-    'rest_framework_simplejwt.token_blacklist'
+    'rest_framework_simplejwt.token_blacklist',
+    
+    # Local apps
+    'core',          # <- Modelos base abstractos
+    'users',         # <- Usuarios y roles
+    'doctors',       # <- Doctores y especialidades
+    'patients',      # <- Pacientes
+    'appointments',  # <- Citas y horarios
+    'notifications', # <- Sistema de notificaciones
 ]
 
 MIDDLEWARE = [
@@ -112,9 +122,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'es-es'  # Español
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'America/Bogota'
 
 USE_I18N = True
 
@@ -131,36 +141,144 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# CORS authorization 
+
+# ============================================================================
+# CONFIGURACIÓN DE USUARIO PERSONALIZADO
+# ============================================================================
+# Usa el modelo User personalizado en lugar del por defecto de Django
+AUTH_USER_MODEL = 'users.User'
+
+# Desactivar redirección automática de barras para APIs REST
+APPEND_SLASH = False
+
+
+# ============================================================================
+# CORS CONFIGURATION
+# ============================================================================
+# Orígenes permitidos para peticiones cross-origin
 CORS_ALLOWED_ORIGINS = [
-    'http://localhost:3000',
-    'http://172.23.160.1:3000'
+    'http://localhost:3000',        # Frontend en desarrollo local
+    'http://172.23.160.1:3000'      # Frontend en red local
 ] 
 
+# Permitir credenciales (cookies, headers de autorización)
+CORS_ALLOW_CREDENTIALS = True
+
+
+# ============================================================================
+# AUTHENTICATION BACKENDS
+# ============================================================================
 AUTHENTICATION_BACKENDS = [
-    'django.contrib.auth.backends.ModelBackend',
+    'django.contrib.auth.backends.ModelBackend',  # Autenticación por email/password
 ]
 
+
+# ============================================================================
+# REST FRAMEWORK CONFIGURATION
+# ============================================================================
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES':(
+    # Clases de autenticación por defecto
+    'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ), 
+    ),
+    
+    # Permisos por defecto - requiere autenticación
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+    
+    # Paginación por defecto
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 20,
 } 
 
+
+# ============================================================================
+# JWT (JSON WEB TOKEN) CONFIGURATION
+# ============================================================================
 SIMPLE_JWT = {
+    # Duración del token de acceso (1 hora)
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    
+    # Duración del token de refresco (7 días)
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    
+    # Generar nuevo refresh token al renovar
+    'ROTATE_REFRESH_TOKENS': True,
+    
+    # Agregar token antiguo a blacklist al rotar
+    'BLACKLIST_AFTER_ROTATION': True,
+    
+    # Tipo de header de autenticación
     'AUTH_HEADER_TYPES': ('Bearer',),
+    
+    # Clase de token
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+    
+    # Campo del modelo User usado como identificador
+    'USER_ID_FIELD': 'id',
+    
+    # Claim en el token que contiene el user_id
+    'USER_ID_CLAIM': 'user_id',
+    
+    # Tipo de token en el payload
+    'TOKEN_TYPE_CLAIM': 'token_type',
 } 
 
+
+# ============================================================================
+# EMAIL CONFIGURATION
+# ============================================================================
+# Backend de email - en desarrollo imprime en consola
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
+
+# ============================================================================
+# DJOSER CONFIGURATION
+# ============================================================================
 DJOSER = {
+    # Campo usado para login (email en lugar de username)
+    'LOGIN_FIELD': 'email',
     
+    # Requiere confirmación de contraseña en registro
+    'USER_CREATE_PASSWORD_RETYPE': True,
+    
+    # URLs para reset de contraseña
     'PASSWORD_RESET_CONFIRM_URL': 'auth/password/reset-password-confirmation/?uid={uid}&token={token}',
+    
+    # URL de activación de cuenta
     'ACTIVATION_URL': '#/activate/{uid}/{token}', 
+    
+    # No enviar emails de activación (en desarrollo)
     'SEND_ACTIVATION_EMAIL': False,
-    'SERIALIZERS': {},
+    
+    # Serializers personalizados
+    'SERIALIZERS': {
+        'user_create': 'users.serializers.UserCreateSerializer',
+        'user': 'users.serializers.UserSerializer',
+        'current_user': 'users.serializers.UserSerializer',
+    },
 } 
 
+
+# ============================================================================
+# SITE CONFIGURATION
+# ============================================================================
 SITE_NAME = 'Clinica Prueba Servidor'
 
 DOMAIN = 'localhost:3000'
+
+
+# ============================================================================
+# EMAIL CONFIGURATION (SMTP)
+# ============================================================================
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
+EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='Clínica <noreply@clinica.com>')
+
+# Para desarrollo: mostrar emails en consola (comentar en producción)
+# EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'

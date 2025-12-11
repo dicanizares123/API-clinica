@@ -9,4 +9,9 @@ urlpatterns = [
     path('auth/', include('djoser.urls.jwt')),
     path('auth/logout/', LogoutView.as_view()),
     
+    # API REST
+    path('api/', include('appointments.urls')),
+    path('api/', include('patients.urls')),
+    path('api/', include('doctors.urls')),
+    path('api/', include('notifications.urls')),
 ]
