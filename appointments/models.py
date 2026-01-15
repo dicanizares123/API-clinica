@@ -21,10 +21,6 @@ class Appointment(BaseModelWithUUID):
         - created_at: Fecha de creación de la cita
         - updated_at: Última actualización
     
-    Usa UUID porque:
-        - Se expone en URLs públicas (confirmar/cancelar cita)
-        - Contiene información médica sensible
-        - Pacientes acceden con el UUID (seguridad)
     """
     
     # Estados posibles de una cita
