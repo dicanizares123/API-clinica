@@ -63,12 +63,12 @@ class Patient(BaseModelWithUUID):
         help_text='Número de contacto del paciente'
     )
     
-    address = models.CharField(
+    """ address = models.CharField(
         max_length=500,
         blank=True,
         verbose_name='Dirección',
         help_text='Dirección de residencia (opcional)'
-    )
+    ) """
     
     # Estado
     is_active = models.BooleanField(

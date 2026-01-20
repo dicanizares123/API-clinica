@@ -8,7 +8,8 @@ from .views import (
     AppointmentViewSet,
     DoctorScheduleViewSet,
     BlockTimeSlotViewSet,
-    AvailableSlotsViewSet
+    AvailableSlotsViewSet, 
+    
 )
 
 # Router para ViewSets
@@ -19,5 +20,8 @@ router.register(r'blocked-slots', BlockTimeSlotViewSet, basename='blocked-slot')
 router.register(r'available-slots', AvailableSlotsViewSet, basename='available-slots')
 
 urlpatterns = [
-    path('', include(router.urls)),
+    path('', include(router.urls)), 
+
+    # URL especifico para el grafico 
+
 ]

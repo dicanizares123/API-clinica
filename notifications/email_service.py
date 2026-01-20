@@ -35,7 +35,6 @@ class EmailService:
             'date': appointment.appointment_date.strftime('%d/%m/%Y'),
             'time': appointment.appointment_time.strftime('%H:%M'),
             'duration': appointment.duration_minutes,
-            'appointment_uuid': str(appointment.uuid),
             'clinic_name': getattr(settings, 'SITE_NAME', 'Clínica'),
         }
         
@@ -61,7 +60,7 @@ class EmailService:
         <body>
             <div class="container">
                 <div class="header">
-                    <h1>✅ ¡Cita Agendada!</h1>
+                    <h1> ¡Cita Agendada!</h1>
                 </div>
                 <div class="content">
                     <p>Hola <strong>{context['patient_name']}</strong>,</p>
@@ -90,8 +89,6 @@ class EmailService:
                         </div>
                     </div>
                     
-                    <p><strong>Código de tu cita:</strong></p>
-                    <p class="uuid">{context['appointment_uuid']}</p>
                     
                     <p style="margin-top: 20px;">
                         <strong>Recomendaciones:</strong>
@@ -99,7 +96,7 @@ class EmailService:
                     <ul>
                         <li>Llega 10 minutos antes de tu cita</li>
                         <li>Trae tu documento de identidad</li>
-                        <li>Si necesitas cancelar, hazlo con al menos 24 horas de anticipación</li>
+                        <li>Si necesitas cancelar, hazlo con al menos 3 horas de anticipación</li>
                     </ul>
                 </div>
                 <div class="footer">
@@ -125,13 +122,10 @@ Tu cita ha sido agendada exitosamente. Aquí están los detalles:
 🏥 Especialidad: {context['specialty']}
 ⏱️ Duración: {context['duration']} minutos
 
-Código de tu cita: {context['appointment_uuid']}
-
 Recomendaciones:
 - Llega 10 minutos antes de tu cita
 - Trae tu documento de identidad
-- Si necesitas cancelar, hazlo con al menos 24 horas de anticipación
-
+- Si necesitas cancelar, hazlo con al menos 3 horas de anticipación
 {context['clinic_name']}
         """
         
@@ -175,7 +169,7 @@ Recomendaciones:
         <body>
             <div class="container">
                 <div class="header">
-                    <h1>❌ Cita Cancelada</h1>
+                    <h1>Cita Cancelada</h1>
                 </div>
                 <div class="content">
                     <p>Hola <strong>{patient.get_full_name()}</strong>,</p>
@@ -223,74 +217,4 @@ Si deseas reagendar tu cita, puedes hacerlo a través de nuestra plataforma.
             logger.error(f"Error enviando email de cancelación: {str(e)}")
             return False
     
-    @staticmethod
-    def send_appointment_reminder(appointment):
-        """
-        Envía recordatorio de cita (para usar con un job programado).
-        """
-        patient = appointment.patient
-        doctor = appointment.doctor_specialist.doctor
-        
-        subject = '🔔 Recordatorio de Cita - Mañana'
-        
-        html_message = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <style>
-                body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
-                .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-                .header {{ background-color: #3b82f6; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }}
-                .content {{ background-color: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; }}
-                .footer {{ text-align: center; padding: 20px; color: #6b7280; font-size: 12px; }}
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <div class="header">
-                    <h1>🔔 Recordatorio de Cita</h1>
-                </div>
-                <div class="content">
-                    <p>Hola <strong>{patient.get_full_name()}</strong>,</p>
-                    <p>Te recordamos que tienes una cita programada para mañana:</p>
-                    <ul>
-                        <li><strong>Fecha:</strong> {appointment.appointment_date.strftime('%d/%m/%Y')}</li>
-                        <li><strong>Hora:</strong> {appointment.appointment_time.strftime('%H:%M')}</li>
-                        <li><strong>Doctor:</strong> Dr(a). {doctor.get_full_name()}</li>
-                    </ul>
-                    <p>¡Te esperamos!</p>
-                </div>
-                <div class="footer">
-                    <p>{getattr(settings, 'SITE_NAME', 'Clínica')}</p>
-                </div>
-            </div>
-        </body>
-        </html>
-        """
-        
-        plain_message = f"""
-Recordatorio de Cita
 
-Hola {patient.get_full_name()},
-
-Te recordamos que tienes una cita programada para mañana:
-- Fecha: {appointment.appointment_date.strftime('%d/%m/%Y')}
-- Hora: {appointment.appointment_time.strftime('%H:%M')}
-- Doctor: Dr(a). {doctor.get_full_name()}
-
-¡Te esperamos!
-        """
-        
-        try:
-            send_mail(
-                subject=subject,
-                message=plain_message,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[patient.email],
-                html_message=html_message,
-                fail_silently=False,
-            )
-            return True
-        except Exception as e:
-            logger.error(f"Error enviando recordatorio: {str(e)}")
-            return False

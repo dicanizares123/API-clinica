@@ -27,7 +27,7 @@ class Appointment(BaseModelWithUUID):
     STATUS_CHOICES = [
         ('scheduled', 'Agendada'),
         ('confirmed', 'Confirmada'),
-        ('in_progress', 'En Curso'),
+        # ('in_progress', 'En Curso'), #  Descartado por ahora
         ('completed', 'Completada'),
         ('cancelled', 'Cancelada'),
         ('no_show', 'No Asistió'),

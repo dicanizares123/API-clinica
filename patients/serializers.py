@@ -24,7 +24,6 @@ class PatientSerializer(serializers.ModelSerializer):
             'document_id',
             'email',
             'phone_number',
-            'address',
             'is_active',
             'created_at',
             'updated_at'
@@ -55,7 +54,6 @@ class PatientDoctorUpdateSerializer(serializers.ModelSerializer):
             'document_id',
             'email',           # Se muestra pero no se puede editar
             'phone_number',
-            'address',
             'is_active',
             'created_at',
             'updated_at'
@@ -80,7 +78,6 @@ class PatientCreateSerializer(serializers.ModelSerializer):
             'document_id',
             'email',
             'phone_number',
-            'address'
         ]
     
     def create(self, validated_data):

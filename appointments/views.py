@@ -19,8 +19,10 @@ from .serializers import (
 from doctors.models import Doctor
 from users.permissions import IsAdministrador, IsPersonalMedico
 from notifications.services import NotificationService
+from notifications.email_service import EmailService 
+from django.db.models import Count 
+from django.utils import timezone  
 from notifications.email_service import EmailService
-
 
 # ============================================================================
 # APPOINTMENT VIEWSET
@@ -35,8 +37,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         GET    /api/appointments/{id}/         - Ver detalle de una cita (requiere auth)
         PUT    /api/appointments/{id}/         - Actualizar cita completa (requiere auth)
         PATCH  /api/appointments/{id}/         - Actualizar cita parcial (requiere auth)
-        DELETE /api/appointments/{id}/         - Eliminar cita (requiere auth)
+        DELETE /api/appointments/{id}/         - Eliminar cita (requiere auth) 
         GET    /api/appointments/{id}/cancel/  - Cancelar cita (requiere auth)
+        Get    /api/appointments/chart-data/     - Obtener datos para gráfico de estado de citas
     """
     queryset = Appointment.objects.all().select_related(
         'patient',
@@ -216,12 +219,12 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         PATCH /api/appointments/{id}/change-status/
         Body: { "status": "confirmed" }
         
-        Status válidos: scheduled, confirmed, in_progress, completed, cancelled, no_show
+        Status válidos: scheduled, confirmed, completed, cancelled, no_show
         """
         appointment = self.get_object()
         new_status = request.data.get('status')
         
-        valid_statuses = ['scheduled', 'confirmed', 'in_progress', 'completed', 'cancelled', 'no_show']
+        valid_statuses = ['scheduled', 'confirmed', 'completed', 'cancelled', 'no_show']
         
         if not new_status:
             return Response(
@@ -344,7 +347,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         status_colors = {
             'scheduled': '#10b981',   # Verde - Consulta
             'confirmed': '#3b82f6',   # Azul - Terapia
-            'in_progress': '#f59e0b', # Amarillo
+            #'in_progress': '#f59e0b',  # Naranja - Descartado por ahora
             'completed': '#6b7280',   # Gris
             'cancelled': '#ef4444',   # Rojo - Emergencia/Cancelada
             'no_show': '#dc2626',     # Rojo oscuro
@@ -379,8 +382,81 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             }
             calendar_events.append(event)
         
-        return Response(calendar_events)
+        return Response(calendar_events) 
+    
+  
+    @action(detail=False, methods=['get'], url_path='chart-data')
+    def get_appointment_status_counts(self, request):
 
+        """
+        Retorna estadísticas de citas de los últimos 6 meses.
+        Endpoint: GET /api/appointments/chart-data/
+        """ 
+        
+        # Calcular fecha de inicio (actual menos 6 meses)
+        today = timezone.now()
+        six_months_ago = today - timedelta(days=180) # Aprox 6 meses
+
+
+        # Configuracion de colores y etiquetas 
+        status_config = {
+            'scheduled': {'name': 'Agendadas', 'color': '#f59e0b'},
+            'confirmed':   {'name': 'Confirmadas', 'color': '#22c55e'},
+            #'in_progress': {'name': 'En Curso',    'color': "#bef63b"}, # Descartado por ahora
+            'completed':   {'name': 'Completadas', 'color': '#3b82f6'},
+            'cancelled':   {'name': 'Canceladas',  'color': '#ef4444'},
+            'no_show':     {'name': 'No asistieron',  'color': '#6b7280'},
+        } 
+
+        # Obtener conteo agrupado desde la base de datos
+        # Esto retorna algo como: [{'status': 'confirmed', 'total': 15}, {'status': 'cancelled', 'total': 2}]
+        
+        db_stats = Appointment.objects.filter(
+            created_at__gte=six_months_ago,  # Mayor o igual a hace 6 meses
+        ).values('status').annotate(total=Count('id'))
+
+        # Convertir a diccionario para búsqueda rápida
+        stats_dict = {item['status']: item['total'] for item in db_stats}
+
+        chart_data = [] 
+
+        # Iterar sobre CONFIGURACIÓN para asegurar que todos los estados aparezcan
+        for key, config in status_config.items():
+            count = stats_dict.get(key, 0)
+            chart_data.append({
+                "name": config['name'],
+                "value": count,
+                "color": config['color']
+            }) 
+
+        return Response(chart_data)
+    
+    def perform_update(self, serializer):
+        """
+        Intercepta la actualizacion (PUT/PATCH) para detectar cambios de estado y 
+        enviar notificaciones si es necesario.
+        """ 
+
+        # 1. Obtenemos la instacia ANTES de guardar los cambios 
+        instance = self.get_object() 
+        old_status = instance.status 
+
+        # 2. Guardamos los nuevos datos 
+        updated_appointment = serializer.save()
+
+        # 3. Comparamos: SI NO estaba cancelada y AHORA SI lo esta -> ENVIAMOS EL EMAIL
+        if old_status != 'cancelled' and updated_appointment.status == 'cancelled':
+            print("❌ Detectado cambio a CANCELADO. Enviando email...") # Log para depurar
+            EmailService.send_appointment_cancelled(updated_appointment)
+
+
+
+
+
+        
+        
+    
+   
 
 # ============================================================================
 # DOCTOR SCHEDULE VIEWSET
@@ -619,3 +695,6 @@ class AvailableSlotsViewSet(viewsets.ViewSet):
         serializer.is_valid()
         
         return Response(serializer.data)
+
+    
+        
