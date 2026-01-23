@@ -181,7 +181,10 @@ REST_FRAMEWORK = {
     # Clases de autenticación por defecto
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ),
+    ), 
+
+    # Manejador global de excepciones 
+    'EXCEPTION_HANDLER': 'core.exceptions.custom_exception_handler',
     
     # Permisos por defecto - requiere autenticación
     'DEFAULT_PERMISSION_CLASSES': [

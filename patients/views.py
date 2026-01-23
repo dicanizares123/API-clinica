@@ -8,6 +8,8 @@ from rest_framework.permissions import IsAuthenticated
 from .models import Patient
 from .serializers import PatientSerializer, PatientCreateSerializer, PatientDoctorUpdateSerializer
 from users.permissions import IsAdministrador
+from django.db.models import Q 
+
 
 
 class PatientViewSet(viewsets.ModelViewSet):
@@ -68,39 +70,23 @@ class PatientViewSet(viewsets.ModelViewSet):
             'message': f'Paciente "{patient_name}" eliminado exitosamente'
         }, status=status.HTTP_200_OK)
     
-    @action(detail=False, methods=['get'], url_path='by_document/(?P<document_id>[^/.]+)')
-    def by_document(self, request, document_id=None):
+
+    def get_queryset(self):
         """
-        Busca un paciente por su cédula/documento de identidad.
-        
-        GET /api/patients/by_document/{document_id}/
-        
-        Ejemplo: GET /api/patients/by_document/1234567890/
-        
-        Response si existe:
-            {
-                "id": 1,
-                "uuid": "...",
-                "first_names": "Juan Carlos",
-                "last_names": "Pérez García",
-                "document_id": "1234567890",
-                "email": "juan@email.com",
-                "phone_number": "0987654321",
-                ...
-            }
-        
-        Response si no existe:
-            {
-                "exists": false,
-                "message": "Paciente no encontrado"
-            }
+        Permite filtrar pacientes por búsqueda de texto (nombre, apellido, cédula).
         """
-        try:
-            patient = Patient.objects.get(document_id=document_id)
-            serializer = self.get_serializer(patient)
-            return Response(serializer.data)
-        except Patient.DoesNotExist:
-            return Response({
-                'exists': False,
-                'message': 'Paciente no encontrado'
-            }, status=status.HTTP_404_NOT_FOUND)
+        queryset = super().get_queryset()
+        
+        # Capturar el parámetro 'search' de la URL
+        search_query = self.request.query_params.get('search', None)
+
+        if search_query:
+            queryset = queryset.filter(
+                Q(first_names__icontains=search_query) | 
+                Q(last_names__icontains=search_query) |
+                Q(document_id__icontains=search_query)
+            )
+            
+        return queryset
+    
+

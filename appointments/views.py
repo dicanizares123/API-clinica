@@ -20,10 +20,10 @@ from doctors.models import Doctor
 from users.permissions import IsAdministrador, IsPersonalMedico
 from notifications.services import NotificationService
 from notifications.email_service import EmailService 
-from django.db.models import Count 
+from django.db.models import Count, Q
 from django.utils import timezone  
 from notifications.email_service import EmailService
-
+from rest_framework.exceptions import ValidationError, PermissionDenied
 # ============================================================================
 # APPOINTMENT VIEWSET
 # ============================================================================
@@ -101,7 +101,6 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         Filtra citas según el rol del usuario:
         - Administrador: Ve todas las citas
         - Doctor: Ve solo sus citas
-        - Otros: Ve todas (se puede personalizar)
         """
         user = self.request.user
         queryset = super().get_queryset()
@@ -342,6 +341,15 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(appointment_date__gte=start_date)
         if end_date:
             queryset = queryset.filter(appointment_date__lte=end_date)
+
+        # --- NUEVO FILTRO DE BÚSQUEDA DE TEXTO (Para el calendario) ---
+        search_query = request.query_params.get('search', None)
+        if search_query:
+            queryset = queryset.filter(
+                Q(patient__first_names__icontains=search_query) | 
+                Q(patient__last_names__icontains=search_query) |
+                Q(patient__document_id__icontains=search_query)
+            )
         
         # Colores según el status o tipo de cita
         status_colors = {
@@ -433,21 +441,40 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     
     def perform_update(self, serializer):
         """
-        Intercepta la actualizacion (PUT/PATCH) para detectar cambios de estado y 
-        enviar notificaciones si es necesario.
+        Intercepta la actualizacion (PUT/PATCH) 
+        1. Valida que no se editen citas pasadas.
+        2. Detecta cambios de estado para enviar notificaciones.
+        
         """ 
+        instance = self.get_object()
 
-        # 1. Obtenemos la instacia ANTES de guardar los cambios 
-        instance = self.get_object() 
+        # --- VALIDACIÓN DE INTEGRIDAD HISTÓRICA ---
+        # Si la cita es de ayer o antes, no permiter cambios 
+
+        today = timezone.now().date()
+
+        if instance.appointment_date < today and not self.request.user.is_superuser: 
+            raise PermissionDenied(
+                {"error": "No es posible modificar citas pasadas. El historial médico es inalterable."}
+            )
+        # ------------------------------------------ 
+
         old_status = instance.status 
 
-        # 2. Guardamos los nuevos datos 
+        # Guardamos los nuevos datos
         updated_appointment = serializer.save()
 
-        # 3. Comparamos: SI NO estaba cancelada y AHORA SI lo esta -> ENVIAMOS EL EMAIL
+        # Lógica de notificaciones 
         if old_status != 'cancelled' and updated_appointment.status == 'cancelled':
-            print("❌ Detectado cambio a CANCELADO. Enviando email...") # Log para depurar
+            print(f"❌ Detectado cambio a CANCELADO para cita {instance.id}. Enviando email...") 
             EmailService.send_appointment_cancelled(updated_appointment)
+        
+        
+
+
+
+
+       
 
 
 

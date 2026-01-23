@@ -90,7 +90,7 @@ class BlockTimeSlotSerializer(serializers.ModelSerializer):
 
 
 # ============================================================================
-# APPOINTMENT SERIALIZER
+# APPOINTMENT SERIALIZER (Lectura / Edición Completa)
 # ============================================================================
 class AppointmentSerializer(serializers.ModelSerializer):
     """
@@ -225,7 +225,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
 
 # ============================================================================
-# APPOINTMENT CREATE SERIALIZER
+# APPOINTMENT CREATE SERIALIZER (Creación Rápida)
 # ============================================================================
 class AppointmentCreateSerializer(serializers.ModelSerializer):
     """
