@@ -58,3 +58,95 @@ class BaseModelWithUUID(BaseModel):
     class Meta:
         abstract = True
         ordering = ['-created_at']
+
+
+# ============================================================================
+# MODELO DE INFORMACIÓN DEL NEGOCIO
+# ============================================================================
+class BusinessInfo(BaseModel):
+    """
+    Información del negocio/clínica.
+    Modelo singleton - solo debe existir un registro.
+    Se usa para almacenar el RUC que se consultará en la API externa.
+    """
+    
+    ruc = models.CharField(
+        max_length=13,
+        unique=True,
+        verbose_name='RUC',
+        help_text='RUC del negocio para consultar en el SRI (13 dígitos)'
+    )
+    
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name='Activo'
+    )
+    
+    class Meta:
+        db_table = 'business_info'
+        verbose_name = 'Información del Negocio'
+        verbose_name_plural = 'Información del Negocio'
+    
+    def __str__(self):
+        return f"RUC: {self.ruc}"
+    
+    def save(self, *args, **kwargs):
+        """Asegurar que solo exista un registro activo."""
+        if not self.pk and BusinessInfo.objects.filter(is_active=True).exists():
+            raise ValueError('Solo puede existir un registro activo de información del negocio')
+        return super().save(*args, **kwargs)
+    
+    @classmethod
+    def get_instance(cls):
+        """Obtener la única instancia activa o None."""
+        return cls.objects.filter(is_active=True).first()
+    
+    @classmethod
+    def get_ruc(cls):
+        """Obtener el RUC configurado."""
+        instance = cls.get_instance()
+        return instance.ruc if instance else None
+
+
+# ============================================================================
+# MODELO DE PRODUCTOS/SERVICIOS
+# ============================================================================
+class Product(BaseModel):
+    """
+    Catálogo de productos y servicios.
+    """
+    
+    description = models.CharField(
+        max_length=255,
+        verbose_name='Descripción',
+        help_text='Descripción del producto o servicio'
+    )
+    
+    code = models.CharField(
+        max_length=50,
+        unique=True,
+        verbose_name='Código',
+        help_text='Código único del producto'
+    )
+    
+    unit_price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        verbose_name='Precio Unitario',
+        help_text='Precio unitario del producto'
+    )
+    
+    class Meta:
+        db_table = 'products'
+        verbose_name = 'Producto/Servicio'
+        verbose_name_plural = 'Productos/Servicios'
+        ordering = ['code']
+    
+    def __str__(self):
+        return f"{self.code} - {self.description}"
+
+
+# ============================================================================
+# MODELOS DE SECUENCIALES - Importados desde models_sequential.py
+# ============================================================================
+from .models_sequential import Sequential, SequentialUsage

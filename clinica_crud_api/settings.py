@@ -194,6 +194,9 @@ REST_FRAMEWORK = {
     # Paginación por defecto
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20,
+    
+    # Schema para documentación automática
+    'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema',
 } 
 
 
@@ -201,8 +204,8 @@ REST_FRAMEWORK = {
 # JWT (JSON WEB TOKEN) CONFIGURATION
 # ============================================================================
 SIMPLE_JWT = {
-    # Duración del token de acceso (1 hora)
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    # Duración del token de acceso (2 horas)
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=120),
     
     # Duración del token de refresco (7 días)
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
@@ -286,3 +289,13 @@ DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='Clínica <noreply@cli
 
 # Para desarrollo: mostrar emails en consola (comentar en producción)
 # EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+
+# ============================================================================
+# OLIMPUSH API CONFIGURATION (Facturación Electrónica)
+# ============================================================================
+OLIMPUSH_API_URL = config(
+    'OLIMPUSH_API_URL', 
+    default='https://test-facturacion.olimpush.com/apifacturacion/v2/facturadorelectronico'
+)
+OLIMPUSH_API_TOKEN = config('OLIMPUSH_API_TOKEN', default='')

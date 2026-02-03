@@ -1,4 +1,6 @@
 from rest_framework.views import exception_handler
+from rest_framework.response import Response
+from rest_framework import status
 
 def custom_exception_handler(exc, context):
     """
@@ -6,20 +8,23 @@ def custom_exception_handler(exc, context):
     Intercepta los errores de DRF y estandariza la respuesta JSON.
     """
 
-     # 1. Llamamos al manejador por defecto de DRF primero
+    # 1. Llamamos al manejador por defecto de DRF primero
     # Esto nos devuelve la respuesta estándar (Response object) o None
     response = exception_handler(exc, context) 
 
-    # 2. Si DRF manejó el error (es un error conocido como 400, 403, 404)
-    if response is not None:
-        
-        # Estructura base que queremos devolver siempre
-        custom_data = {
-            "success": False,
-            "status_code": response.status_code,
-            "message": "Ha ocurrido un error",
-            "errors": None
-        } 
+    # 2. Si DRF no manejó el error, devolver None (Django lo manejará)
+    if response is None:
+        return None
+    
+    # 3. Si DRF manejó el error, personalizamos la respuesta
+    # Estructura base que queremos devolver siempre
+    custom_data = {
+        "success": False,
+        "status_code": response.status_code,
+        "message": "Ha ocurrido un error",
+        "errors": None,
+        "api": "djangoclinica"  # Identificador de origen
+    } 
 
     # --- CASO 1: Errores de Validación (400) ---
     if response.status_code == 400:

@@ -8,7 +8,8 @@ from rest_framework.permissions import IsAuthenticated
 from .models import Patient
 from .serializers import PatientSerializer, PatientCreateSerializer, PatientDoctorUpdateSerializer
 from users.permissions import IsAdministrador
-from django.db.models import Q 
+from django.db.models import Q
+from core.services import django_response 
 
 
 
@@ -50,12 +51,14 @@ class PatientViewSet(viewsets.ModelViewSet):
         
         # Para update/partial_update, verificar si es admin o doctor
         if self.action in ['update', 'partial_update']:
-            user = self.request.user
-            # Si es administrador, puede editar todo
-            if user.role and user.role.slug == 'administrador':
-                return PatientSerializer
-            # Si es doctor u otro rol, no puede editar email
-            return PatientDoctorUpdateSerializer
+            # Verificar que el usuario esté autenticado
+            if hasattr(self.request, 'user') and self.request.user and self.request.user.is_authenticated:
+                user = self.request.user
+                # Si es administrador, puede editar todo
+                if hasattr(user, 'role') and user.role and user.role.slug == 'administrador':
+                    return PatientSerializer
+                # Si es doctor u otro rol, no puede editar email
+                return PatientDoctorUpdateSerializer
         
         return PatientSerializer
     
@@ -66,9 +69,55 @@ class PatientViewSet(viewsets.ModelViewSet):
         patient = self.get_object()
         patient_name = patient.get_full_name()
         patient.delete()
-        return Response({
-            'message': f'Paciente "{patient_name}" eliminado exitosamente'
-        }, status=status.HTTP_200_OK)
+        return django_response(
+            data=None,
+            message=f'Paciente "{patient_name}" eliminado exitosamente',
+            status_code=200
+        )
+    
+    
+    @action(detail=False, methods=['get'], url_path='by_document/(?P<document_id>[^/.]+)')
+    def by_document(self, request, document_id=None):
+        """
+        Busca un paciente por su cédula/documento de identidad.
+        
+        GET /api/patients/by_document/{document_id}/
+        
+        Ejemplo: GET /api/patients/by_document/1234567890/
+        
+        Response si existe:
+            {
+                "id": 1,
+                "uuid": "...",
+                "first_names": "Juan Carlos",
+                "last_names": "Pérez García",
+                "document_id": "1234567890",
+                "email": "juan@email.com",
+                "phone_number": "0987654321",
+                ...
+            }
+        
+        Response si no existe:
+            {
+                "exists": false,
+                "message": "Paciente no encontrado"
+            }
+        """
+        try:
+            patient = Patient.objects.get(document_id=document_id)
+            serializer = self.get_serializer(patient)
+            return django_response(
+                data=serializer.data,
+                message='Paciente encontrado',
+                status_code=200
+            )
+        except Patient.DoesNotExist:
+            return django_response(
+                data={'exists': False},
+                message='Paciente no encontrado',
+                status_code=404,
+                success=False
+            )
     
 
     def get_queryset(self):
